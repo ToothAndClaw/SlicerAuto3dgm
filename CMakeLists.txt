@@ -4,12 +4,12 @@ project(Auto3dgm)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_HOMEPAGE "http://slicer.org/slicerWiki/index.php/Documentation/Nightly/Extensions/Auto3dgm")
-set(EXTENSION_CATEGORY "Examples")
-set(EXTENSION_CONTRIBUTORS "John Doe (AnyWare Corp.)")
+set(EXTENSION_HOMEPAGE "https://toothandclaw.github.io")
+set(EXTENSION_CATEGORY "Auto3dgm")
+set(EXTENSION_CONTRIBUTORS "Doug Boyer (Duke University)")
 set(EXTENSION_DESCRIPTION "The auto3dgm Slicer Extension")
-set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/Auto3dgm.png")
-set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/Auto3dgm/Screenshots/1.png")
+set(EXTENSION_ICONURL "http://www2.stat.duke.edu/~hmk16/auto3dgm/auto3dgmlogo.png")
+set(EXTENSION_SCREENSHOTURLS "http://www2.stat.duke.edu/~hmk16/auto3dgm/auto3dgmscreenshot.png")
 set(EXTENSION_DEPENDS "NA") # Specified as a space separated string, a list or 'NA' if any
 
 #-----------------------------------------------------------------------------
