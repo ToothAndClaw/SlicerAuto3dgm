@@ -1,0 +1,1 @@
+from auto3dgm_nazar.app import *
