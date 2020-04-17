@@ -6,13 +6,6 @@ from slicer.ScriptedLoadableModule import *
 import logging
 import pdb
 
-import auto3dgm_nazar
-from auto3dgm_nazar.mesh.meshexport import MeshExport
-from auto3dgm_nazar.analysis.correspondence import Correspondence
-from auto3dgm_nazar.mesh.subsample import Subsample
-from auto3dgm_nazar.dataset.datasetfactory import DatasetFactory
-from auto3dgm_nazar.mesh.meshfactory import MeshFactory
-
 import numpy as np
 
 #import web_view_mesh
@@ -69,6 +62,17 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
+
+  def __init__(self, parent=None):
+    ScriptedLoadableModuleWidget.__init__(self, parent)
+
+        # Make sure mosek is installed
+    try:
+      import mosek
+    except ModuleNotFoundError as e:
+      if slicer.util.confirmOkCancelDisplay("Auto3dgm requires 'mosek' python package. Click OK to download it now. It may take a few minues."):
+        slicer.util.pip_install('mosek')
+      import mosek
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
@@ -448,6 +452,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
 
   # Logic service function AL001.001 Create dataset
   def createDataset(inputdirectory):
+    from auto3dgm_nazar.dataset.datasetfactory import DatasetFactory
     dataset = DatasetFactory.ds_from_dir(inputdirectory,center_scale=True)
     return dataset
 
@@ -456,6 +461,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
   # In: List of points, possibly just one
   # list of meshes
   def subsample(Auto3dgmData,list_of_pts, meshes):
+    from auto3dgm_nazar.mesh.subsample import Subsample
     print(list_of_pts)
     for mesh in meshes:
         print(len(mesh.vertices))
@@ -472,10 +478,12 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     return(Auto3dgmData)
 
   def createDatasetCollection(dataset, name):
+    import auto3dgm_nazar
     datasetCollection=auto3dgm_nazar.dataset.datasetcollection.DatasetCollection(datasets = [dataset],dataset_names = [name])
     return datasetCollection
 
   def correspondence(Auto3dgmData, mirror, phase = 1):
+    from auto3dgm_nazar.analysis.correspondence import Correspondence
     if phase == 1:
       npoints = Auto3dgmData.phase1SampledPoints
     else:
@@ -486,6 +494,8 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     return(corr)
   
   def landmarksFromPseudoLandmarks(subsampledMeshes,permutations,rotations):
+    import auto3dgm_nazar
+    from auto3dgm_nazar.mesh.meshfactory import MeshFactory
     meshes = []
     for i in range(len(subsampledMeshes)):
       mesh = subsampledMeshes[i]
@@ -523,6 +533,8 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
 
 
   def alignOriginalMeshes(Auto3dgmData, phase = 2):
+    import auto3dgm_nazar
+    from auto3dgm_nazar.mesh.meshfactory import MeshFactory
     if 'Phase 2' in Auto3dgmData.datasetCollection.analysis_sets:
       corr = Auto3dgmData.datasetCollection.analysis_sets['Phase 2']
     elif 'Phase 1' in Auto3dgmData.datasetCollection.analysis_sets:
@@ -545,6 +557,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     return(Auto3dgmData)
 
   def saveAlignedMeshes(Auto3dgmData,outputFolder):
+    from auto3dgm_nazar.mesh.meshexport import MeshExport
     if not os.path.exists(outputFolder):
       os.makedirs(outputFolder)
     for mesh in Auto3dgmData.aligned_meshes:
@@ -566,6 +579,8 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       Auto3dgmLogic.exportRotations(Auto3dgmData, os.path.join(exportFolder, subDirs[2]), p)
 
   def exportAlignedMeshes(Auto3dgmData, exportFolder, phase = 2):
+    from auto3dgm_nazar.mesh.meshexport import MeshExport
+    from auto3dgm_nazar.mesh.meshfactory import MeshFactory
     if phase == 1:
       label = "Phase 1"
     elif phase == 2:
@@ -609,13 +624,13 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     else:
       raise ValueError('Unaccepted phase number passed to Auto3dgmLogic.')
 
-  pdb.set_trace()
-  m = Auto3dgmData.datasetCollection.datasets[0]
-  r = Auto3dgmData.datasetCollection.analysis_sets[label].globalized_alignment['r']
+  # pdb.set_trace()
+  # m = Auto3dgmData.datasetCollection.datasets[0]
+  # r = Auto3dgmData.datasetCollection.analysis_sets[label].globalized_alignment['r']
 
-  for idx, mesh in enumerate(m):
-    rot = r[idx]
-    Auto3dgmLogic.saveNumpyArrayToCsv(rot, os.path.join(exportFolder), mesh.name)
+  # for idx, mesh in enumerate(m):
+  #   rot = r[idx]
+  #   Auto3dgmLogic.saveNumpyArrayToCsv(rot, os.path.join(exportFolder), mesh.name)
 
 
   def prepareDirs(exportFolder, subDirs=[]):
