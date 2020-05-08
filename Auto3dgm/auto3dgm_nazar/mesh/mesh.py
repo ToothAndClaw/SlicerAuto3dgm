@@ -10,8 +10,6 @@ class Mesh:
     def __init__(self, vtk_mesh, center_scale=False, name=None):
         self.polydata = vtk_mesh
         self.name = name
-        self.initial_centroid = self.centroid
-        self.initial_scale = self.scale
         self.initial_vertices = self.vertices
         
         if center_scale:
@@ -58,6 +56,16 @@ class Mesh:
     def scale(self):
         return np.linalg.norm(vtk_to_numpy(self.polydata.GetPoints().GetData()), 'fro')
 
+    @property
+    def initial_centroid(self):
+        V = self.initial_vertices
+        return np.mean(V, axis=0)
+    
+    @property
+    def initial_scale(self):
+        V = self.initial_vertices - self.initial_centroid
+        return np.linalg.norm(V, 'fro')
+    
     def center(self):
         transform = vtk.vtkTransform()
         transform.Translate(-self.centroid[0], -self.centroid[1], -self.centroid[2])

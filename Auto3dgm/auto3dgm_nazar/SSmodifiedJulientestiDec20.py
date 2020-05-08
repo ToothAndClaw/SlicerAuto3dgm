@@ -7,7 +7,7 @@ low_res = 10
 high_res = 20
 np.set_printoptions(suppress=True)
 np.set_printoptions(precision=4)
-dataset_coll = auto3dgm_nazar.dataset.datasetfactory.DatasetFactory.ds_from_dir("auto3dgm_nazar/tests/fixtures/sample", center_scale=False)
+dataset_coll = auto3dgm_nazar.dataset.datasetfactory.DatasetFactory.ds_from_dir("auto3dgm_nazar/tests/fixtures/sample", center_scale=True)
 orig_meshes = dataset_coll.datasets[0]
 seed = {}
 for m in orig_meshes:
