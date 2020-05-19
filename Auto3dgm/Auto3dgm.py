@@ -4,13 +4,7 @@ import unittest
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
-
-import auto3dgm_nazar
-from auto3dgm_nazar.mesh.meshexport import MeshExport
-from auto3dgm_nazar.analysis.correspondence import Correspondence
-from auto3dgm_nazar.mesh.subsample import Subsample
-from auto3dgm_nazar.dataset.datasetfactory import DatasetFactory
-from auto3dgm_nazar.mesh.meshfactory import MeshFactory
+import pdb
 
 import numpy as np
 
@@ -27,11 +21,10 @@ class Auto3dgm(ScriptedLoadableModule):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    slicer.app.connect("startupCompleted()", self.checkPythonPackages)
     self.parent.title = "Auto3dgm" # TODO make this more human readable by adding spaces
-    self.parent.categories = ["Examples"]
+    self.parent.categories = ["Auto3dgm"]
     self.parent.dependencies = []
-    self.parent.contributors = ["John Doe (AnyWare Corp.)"] # replace with "Firstname Lastname (Organization)"
+    self.parent.contributors = ["Doug Boyer (Duke University)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
 This is an example of scripted loadable module bundled in an extension.
 It performs a simple thresholding on the input volume and optionally captures a screenshot.
@@ -44,13 +37,6 @@ and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR0132
 
     # module level data
 
-  def checkPythonPackages(self):
-    print('Checking for required python packages')
-    try:
-      import mosek
-    except:
-      slicer.util.pip_install('mosek')
-      import mosek
 #
 # Auto3dgmModuleData
 #
@@ -76,6 +62,17 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
+
+  def __init__(self, parent=None):
+    ScriptedLoadableModuleWidget.__init__(self, parent)
+
+        # Make sure mosek is installed
+    try:
+      import mosek
+    except ModuleNotFoundError as e:
+      if slicer.util.confirmOkCancelDisplay("Auto3dgm requires 'mosek' python package. Click OK to download it now. It may take a few minues."):
+        slicer.util.pip_install('mosek')
+      import mosek
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
@@ -154,21 +151,9 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     self.reflectionCheckBox.setToolTip("Whether meshes can be reflected/mirrored to achieve more optimal alignments.")
     self.parameterLayout.addRow("Allow reflection", self.reflectionCheckBox)
 
-#    self.subsampleComboBox = qt.QComboBox()
-#    self.subsampleComboBox.addItem("FPS (Furthest Point Sampling)")
-#    self.subsampleComboBox.addItem("GPL (Gaussian Process Landmarks)")
-#    self.subsampleComboBox.addItem("FPS/GPL Hybrid")
-#    self.parameterLayout.addRow("Subsampling", self.subsampleComboBox)
-
     self.fpsSeed = qt.QSpinBox()
     self.fpsSeed.setSpecialValueText('-')
     self.parameterLayout.addRow("Optional FPS Seed", self.fpsSeed)
-
-#    self.hybridPoints = qt.QSpinBox()
-#    self.hybridPoints.setSpecialValueText('-')
-#    self.hybridPoints.setMinimum(1)
-#    self.hybridPoints.setMaximum(1000)
-#    self.parameterLayout.addRow("Hybrid GPL Points", self.hybridPoints)
 
     self.phaseChoiceComboBox = qt.QComboBox()
     self.phaseChoiceComboBox.addItem("1 (Single Alignment Pass)")
@@ -179,20 +164,14 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     self.phase1PointNumber = qt.QSpinBox()
     self.phase1PointNumber.setMinimum(1)
     self.phase1PointNumber.setMaximum(100000)
-    self.phase1PointNumber.setValue(10)
+    self.phase1PointNumber.setValue(40)
     self.parameterLayout.addRow("Phase 1 Points", self.phase1PointNumber)
 
     self.phase2PointNumber = qt.QSpinBox()
     self.phase2PointNumber.setMinimum(1)
     self.phase2PointNumber.setMaximum(1000000)
-    self.phase2PointNumber.setValue(40)
+    self.phase2PointNumber.setValue(100)
     self.parameterLayout.addRow("Phase 2 Points", self.phase2PointNumber)
-
-#    self.processingComboBox = qt.QComboBox()
-#    self.processingComboBox.addItem("Local Single CPU Core")
-#    self.processingComboBox.addItem("Local Multiple CPU Cores")
-#    self.processingComboBox.addItem("Cluster/Grid")
-#    self.parameterLayout.addRow("Processing", self.processingComboBox)
 
   def selectMeshFolder(self):
       self.meshFolder=qt.QFileDialog().getExistingDirectory()
@@ -473,6 +452,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
 
   # Logic service function AL001.001 Create dataset
   def createDataset(inputdirectory):
+    from auto3dgm_nazar.dataset.datasetfactory import DatasetFactory
     dataset = DatasetFactory.ds_from_dir(inputdirectory,center_scale=True)
     return dataset
 
@@ -481,6 +461,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
   # In: List of points, possibly just one
   # list of meshes
   def subsample(Auto3dgmData,list_of_pts, meshes):
+    from auto3dgm_nazar.mesh.subsample import Subsample
     print(list_of_pts)
     for mesh in meshes:
         print(len(mesh.vertices))
@@ -497,10 +478,12 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     return(Auto3dgmData)
 
   def createDatasetCollection(dataset, name):
+    import auto3dgm_nazar
     datasetCollection=auto3dgm_nazar.dataset.datasetcollection.DatasetCollection(datasets = [dataset],dataset_names = [name])
     return datasetCollection
 
   def correspondence(Auto3dgmData, mirror, phase = 1):
+    from auto3dgm_nazar.analysis.correspondence import Correspondence
     if phase == 1:
       npoints = Auto3dgmData.phase1SampledPoints
     else:
@@ -511,27 +494,28 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     return(corr)
   
   def landmarksFromPseudoLandmarks(subsampledMeshes,permutations,rotations):
+    import auto3dgm_nazar
+    from auto3dgm_nazar.mesh.meshfactory import MeshFactory
     meshes = []
     for i in range(len(subsampledMeshes)):
       mesh = subsampledMeshes[i]
       perm = permutations[i]
       rot = rotations[i]
-      V = mesh.vertices
-      print(mesh.initial_scale)
-      # check if broadcasting is alright here
-      scaledV = mesh.initial_vertices
-      lmtranspose = scaledV.T @ perm
-      #landmarks = scaledV
-      landmarks = np.transpose(np.matmul(rot,lmtranspose))
-      mesh = auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices=landmarks,name=mesh.name, center_scale=False, deep=True)
+      print(perm.shape)
+      print(mesh.vertices.shape)
+      mesh.rotate(rot)
+      V = mesh.vertices.T
+      lmtranspose = V @ perm
+      landmarks = lmtranspose.T
+      mesh = auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices=landmarks,name=mesh.name)
       meshes.append(mesh)
     return(meshes)
 
   def saveNumpyArrayToCsv(array,filename):
-    #print(array)
-    #print(filename)
+    print(array)
+    print(filename)
     np.savetxt(filename+".csv",array,delimiter = ",",fmt = "%s")
-    #print(str(array) + " saved to file " + str(filename))
+    print(str(array) + " saved to file " + str(filename))
   
   def saveNumpyArrayToFcsv(array,filename):
       #print(array)
@@ -545,17 +529,20 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
           file.write("p" + str(i) + ",")
           file.write(str(array[i,0]) + "," + str(array[i,1]) + "," + str(array[i,2]) + ",1,1 \n")
       file.close()
-      #print("file " + str(filename) + ".fcsv saved \n" )
+      print("file " + str(filename) + ".fcsv saved \n" )
 
 
   def alignOriginalMeshes(Auto3dgmData, phase = 2):
-    if phase == 1:
-      corr = Auto3dgmData.datasetCollection.analysis_sets['Phase 1']
-    elif phase == 2:
+    import auto3dgm_nazar
+    from auto3dgm_nazar.mesh.meshfactory import MeshFactory
+    if 'Phase 2' in Auto3dgmData.datasetCollection.analysis_sets:
       corr = Auto3dgmData.datasetCollection.analysis_sets['Phase 2']
+    elif 'Phase 1' in Auto3dgmData.datasetCollection.analysis_sets:
+      corr = Auto3dgmData.datasetCollection.analysis_sets['Phase 1']
+      print("Phase 2 results do not exist, computing with Phase 1")
     else:
-      raise ValueError('Unaccepted phase number passed to Auto3dgmLogic.exportAlignedLandmarks')
-
+      print("No alignment has been computed")
+      return(0)
     meshes = Auto3dgmData.datasetCollection.datasets[0]
     Auto3dgmData.aligned_meshes = []
     for t in range(len(meshes)):
@@ -563,21 +550,19 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       verts=meshes[t].vertices
       faces=meshes[t].faces
       name=meshes[t].name
-      #vertices = verts
       vertices=np.transpose(np.matmul(R,np.transpose(verts)))
       faces=faces.astype('int64')
-      aligned_mesh=auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices, faces=faces, name=name, center_scale=False, deep=True)
+      aligned_mesh=auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices, faces=faces, name=name, center_scale=True, deep=True)
       Auto3dgmData.aligned_meshes.append(aligned_mesh)
     return(Auto3dgmData)
 
   def saveAlignedMeshes(Auto3dgmData,outputFolder):
+    from auto3dgm_nazar.mesh.meshexport import MeshExport
     if not os.path.exists(outputFolder):
       os.makedirs(outputFolder)
     for mesh in Auto3dgmData.aligned_meshes:
       print(os.path.join(outputFolder, mesh.name))
       MeshExport.writeToFile(outputFolder, mesh, format='ply')
-    print("Aligned meshes saved. \n" )
-
 
   def exportData(Auto3dgmData, outputFolder, phases=[1, 2]):
     acceptable_phases = [1, 2]
@@ -586,15 +571,31 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
         raise ValueError('Unacceptable phase number passed to Auto3dgmLogic.exportData')
         
       exportFolder = os.path.join(outputFolder, 'phase' + str(p))
-      subDirs = ['aligned_meshes', 'aligned_landmarks', 'rotation', 'scale_info']
+      subDirs = ['aligned_meshes', 'aligned_landmarks', 'rotations']
 
       Auto3dgmLogic.prepareDirs(exportFolder, subDirs)
-      Auto3dgmLogic.alignOriginalMeshes(Auto3dgmData, p)
-      Auto3dgmLogic.saveAlignedMeshes(Auto3dgmData, os.path.join(exportFolder, subDirs[0]))
+      Auto3dgmLogic.exportAlignedMeshes(Auto3dgmData, os.path.join(exportFolder, subDirs[0]), p)
       Auto3dgmLogic.exportAlignedLandmarks(Auto3dgmData, os.path.join(exportFolder, subDirs[1]), p)
       Auto3dgmLogic.exportRotations(Auto3dgmData, os.path.join(exportFolder, subDirs[2]), p)
-      Auto3dgmLogic.exportScaleInfo(Auto3dgmData, os.path.join(exportFolder, subDirs[3]))
-    print("All computation done. \n" )
+
+  def exportAlignedMeshes(Auto3dgmData, exportFolder, phase = 2):
+    from auto3dgm_nazar.mesh.meshexport import MeshExport
+    from auto3dgm_nazar.mesh.meshfactory import MeshFactory
+    if phase == 1:
+      label = "Phase 1"
+    elif phase == 2:
+      label = "Phase 2"
+    else:
+      raise ValueError('Unaccepted phase number passed to Auto3dgmLogic.exportAlignedMeshes')
+
+    m = Auto3dgmData.datasetCollection.datasets[0]
+    r = Auto3dgmData.datasetCollection.analysis_sets[label].globalized_alignment['r']
+
+    for idx, mesh in enumerate(m):
+      new_vertices = np.transpose(r[idx] @ np.transpose(mesh.vertices))
+      new_faces = mesh.faces.astype('int64')
+      new_mesh = MeshFactory.mesh_from_data(new_vertices, faces=new_faces, name=mesh.name, center_scale=True, deep=True)
+      MeshExport.writeToFile(exportFolder, new_mesh, format='ply')
 
   def exportAlignedLandmarks(Auto3dgmData, exportFolder, phase = 2):
     if phase == 1:
@@ -614,6 +615,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     for l in landmarks:
       Auto3dgmLogic.saveNumpyArrayToFcsv(l.vertices, os.path.join(exportFolder, l.name))
 
+
   def exportRotations(Auto3dgmData, exportFolder, phase = 2):
     if phase == 1:
       label = "Phase 1"
@@ -621,36 +623,16 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       label = "Phase 2"
     else:
       raise ValueError('Unaccepted phase number passed to Auto3dgmLogic.')
-    
-    m = Auto3dgmData.datasetCollection.datasets[0]
-    r = Auto3dgmData.datasetCollection.analysis_sets[label].globalized_alignment['r']
 
-    for idx, mesh in enumerate(m):
-      rot = r[idx]
-      Auto3dgmLogic.saveNumpyArrayToCsv(rot, os.path.join(exportFolder, mesh.name))
+  # pdb.set_trace()
+  # m = Auto3dgmData.datasetCollection.datasets[0]
+  # r = Auto3dgmData.datasetCollection.analysis_sets[label].globalized_alignment['r']
 
-  def exportScaleInfo(Auto3dgmData, exportFolder):
-    n = Auto3dgmData.phase1SampledPoints
-    m = Auto3dgmData.phase2SampledPoints
+  # for idx, mesh in enumerate(m):
+  #   rot = r[idx]
+  #   Auto3dgmLogic.saveNumpyArrayToCsv(rot, os.path.join(exportFolder), mesh.name)
 
-    mmesh = Auto3dgmData.datasetCollection.datasets[0]
-    mlmk1 = Auto3dgmData.datasetCollection.datasets[n][n]
-    mlmk2 = Auto3dgmData.datasetCollection.datasets[m][m]
 
-    for idx, mesh in enumerate(mmesh):
-      lmk1 = mlmk1[idx]
-      lmk2 = mlmk2[idx]
-      filename = os.path.join(exportFolder, mesh.name) + ".csv"
-      file = open(filename,"w")
-      file.write("# center and scale information. \n")
-      file.write("# original center and scale. \n")
-      file.write("# first landmarks center and scale. \n")
-      file.write("# second landmarks center and scale. \n")
-      file.write(str(mesh.initial_centroid[0]) + "," + str(mesh.initial_centroid[1]) + "," + str(mesh.initial_centroid[2]) + "," + str(mesh.initial_scale) + " \n")
-      file.write(str(lmk1.initial_centroid[0]) + "," + str(lmk1.initial_centroid[1]) + "," + str(lmk1.initial_centroid[2]) + "," + str(lmk1.initial_scale) + " \n")
-      file.write(str(lmk2.initial_centroid[0]) + "," + str(lmk2.initial_centroid[1]) + "," + str(lmk2.initial_centroid[2]) + "," + str(lmk2.initial_scale) + " \n")
-      file.close()
-      
   def prepareDirs(exportFolder, subDirs=[]):
     if not os.path.exists(exportFolder):
       os.makedirs(exportFolder)
@@ -711,4 +693,29 @@ class Auto3dgmTest(ScriptedLoadableModuleTest):
     self.test_Auto3dgm1()
 
   def test_Auto3dgm1(self):
-    pass
+    """ Ideally you should have several levels of tests.  At the lowest level
+    tests should exercise the functionality of the logic with different inputs
+    (both valid and invalid).  At higher levels your tests should emulate the
+    way the user would interact with your code and confirm that it still works
+    the way you intended.
+    One of the most important features of the tests is that it should alert other
+    developers when their changes will have an impact on the behavior of your
+    module.  For example, if a developer removes a feature that you depend on,
+    your test should break so they know that the feature is needed.
+    """
+
+    self.delayDisplay("Starting the test")
+    #
+    # first, get some data
+    #
+    import SampleData
+    SampleData.downloadFromURL(
+      nodeNames='FA',
+      fileNames='FA.nrrd',
+      uris='http://slicer.kitware.com/midas3/download?items=5767')
+    self.delayDisplay('Finished with download and loading')
+
+    volumeNode = slicer.util.getNode(pattern="FA")
+    logic = Auto3dgmLogic()
+    self.assertIsNotNone( logic.hasImageData(volumeNode) )
+    self.delayDisplay('Test passed!')
