@@ -18,6 +18,12 @@ slicerMacroBuildScriptedModule(
   WITH_GENERIC_TESTS
   )
 
+install(DIRECTORY "auto3dgm_nazar"
+  DESTINATION "${Slicer_INSTALL_QTSCRIPTEDMODULES_BIN_DIR}"
+  COMPONENT Runtime
+  USE_SOURCE_PERMISSIONS
+  )
+
 #-----------------------------------------------------------------------------
 if(BUILD_TESTING)
 
