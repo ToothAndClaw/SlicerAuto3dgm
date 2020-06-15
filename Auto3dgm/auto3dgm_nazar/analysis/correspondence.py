@@ -450,6 +450,10 @@ class Correspondence:
                 Aeq_red = Aeq[:, ivars]
                 rows, cols, values = find(Aeq_red)
                 
+                ### specify mosek license
+                file_path = os.path.dirname(os.path.abspath(__file__))
+                lic_path = os.path.join(file_path, '../lib/mosek.lic')
+                
                 ### send to mosek optimization
                 with Model('example') as M:
                     # Create variable 'x' of length n_vars
@@ -460,6 +464,8 @@ class Correspondence:
                     # Set the objective funciton to (c^t * x)
                     c = dissimilarity_for_lp_red
                     M.objective("obj", ObjectiveSense.Minimize, Expr.dot(c, x))
+                    # Put license path
+                    M.putlicensepath(lic_path)
                     # Solve the problem
                     M.solve()
                     #Get the solution values
