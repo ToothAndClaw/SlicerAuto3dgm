@@ -631,13 +631,21 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       lmk2 = mlmk2[idx]
       filename = os.path.join(exportFolder, mesh.name) + ".csv"
       file = open(filename,"w")
-      file.write("# center and scale information. \n")
-      file.write("# original center and scale. \n")
-      file.write("# first landmarks center and scale. \n")
-      file.write("# second landmarks center and scale. \n")
-      file.write(str(mesh.initial_centroid[0]) + "," + str(mesh.initial_centroid[1]) + "," + str(mesh.initial_centroid[2]) + "," + str(mesh.initial_scale) + " \n")
-      file.write(str(lmk1.initial_centroid[0]) + "," + str(lmk1.initial_centroid[1]) + "," + str(lmk1.initial_centroid[2]) + "," + str(lmk1.initial_scale) + " \n")
-      file.write(str(lmk2.initial_centroid[0]) + "," + str(lmk2.initial_centroid[1]) + "," + str(lmk2.initial_centroid[2]) + "," + str(lmk2.initial_scale) + " \n")
+      # print slicer transform type 4 by 4 matrix
+      # upper left 3 by 3 matrix is rotation/scale
+      # rightmost column is translation
+      file.write(str(mesh.initial_scale) + ",0,0," + "-" + str(mesh.initial_centroid[0]) + " \n")
+      file.write("0," + str(mesh.initial_scale) + ",0," + "-" + str(mesh.initial_centroid[1]) + " \n")
+      file.write("0,0," + str(mesh.initial_scale) + str(mesh.initial_centroid[2]) + " \n")
+      file.write("0, 0, 0, 1")
+      # use below to obtain raw center and scale info
+      #file.write("# center and scale information. \n")
+      #file.write("# original center and scale. \n")
+      #file.write("# first landmarks center and scale. \n")
+      #file.write("# second landmarks center and scale. \n")
+      #file.write(str(mesh.initial_centroid[0]) + "," + str(mesh.initial_centroid[1]) + "," + str(mesh.initial_centroid[2]) + "," + str(mesh.initial_scale) + " \n")
+      #file.write(str(lmk1.initial_centroid[0]) + "," + str(lmk1.initial_centroid[1]) + "," + str(lmk1.initial_centroid[2]) + "," + str(lmk1.initial_scale) + " \n")
+      #file.write(str(lmk2.initial_centroid[0]) + "," + str(lmk2.initial_centroid[1]) + "," + str(lmk2.initial_centroid[2]) + "," + str(lmk2.initial_scale) + " \n")
       file.close()
       
   def prepareDirs(exportFolder, subDirs=[]):
