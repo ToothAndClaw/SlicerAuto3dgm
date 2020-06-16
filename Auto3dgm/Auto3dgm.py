@@ -65,7 +65,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleWidget.__init__(self, parent)
-      
+    
       # Make sure mosek is installed
     try:
       import mosek
@@ -73,7 +73,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
       if slicer.util.confirmOkCancelDisplay("Auto3dgm requires 'mosek' python package. Click OK to download it now. It may take a few minues."):
         slicer.util.pip_install('mosek')
         import mosek
-            
+  
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
 
@@ -104,7 +104,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     self.setupSetupTab(setupTabLayout)
     self.setupRunTab(runTabLayout)
     self.setupOutTab(outTabLayout)
-  
+
   ### SETUP TAB WIDGETS AND BEHAVIORS ###
 
   def setupSetupTab(self, setupTabLayout):
@@ -124,7 +124,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     self.meshOutputText, volumeOutLabel, self.outputFolderButton=self.textIn('Output folder','Choose output folder', '')
     self.outputFolderButton.connect('clicked(bool)', self.selectOutputFolder)
 
-    inputfolderLayout.addRow(volumeInLabel)#,1,1)    
+    inputfolderLayout.addRow(volumeInLabel)#,1,1)
     inputfolderLayout.addRow(self.meshInputText)#,1,2)
     inputfolderLayout.addRow(self.inputFolderButton)#,1,3)
     inputfolderLayout.addRow(self.loadButton)
@@ -272,7 +272,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
 
     # self.visualizationmeshInputText, visualizationvolumeInLabel, self.visualizationinputFolderButton=self.textIn('Input folder','Choose input folder', '')
 
-    # visualizationinputfolderLayout.addRow(visualizationvolumeInLabel)#,1,1)    
+    # visualizationinputfolderLayout.addRow(visualizationvolumeInLabel)#,1,1)
     # visualizationinputfolderLayout.addRow(self.visualizationmeshInputText)#,1,2)
     # visualizationinputfolderLayout.addRow(self.visualizationinputFolderButton)#,1,3)
 
@@ -311,7 +311,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     self.visSubButton.toolTip = "Visualize collections of subsampled points per mesh."
     self.visSubButton.connect('clicked(bool)', self.visSubButtonOnLoad)
     self.visSubButton.enabled = False
-    self.visGroupBoxLayout.addWidget(self.visSubButton) 
+    self.visGroupBoxLayout.addWidget(self.visSubButton)
 
     # self.outGroupBox = qt.QGroupBox("Output results")
     # self.outGroupBoxLayout = qt.QVBoxLayout()
@@ -355,7 +355,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     else:
       self.visPhase1Button.enabled = False
       self.visPhase2Button.enabled = False
-      self.visStartServerButton.setText("Start mesh visualization server") 
+      self.visStartServerButton.setText("Start mesh visualization server")
       if self.serverNode:
         self.serverNode.Cancel()
       Auto3dgmLogic.removeDir(viewerTmp)
@@ -369,7 +369,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     viewerTmp = os.path.join(self.outputFolder, 'viewer_tmp')
     Auto3dgmLogic.copyAlignedMeshes(viewerTmp, self.outputFolder, phase = 2)
     self.webWidget = Auto3dgmLogic.createWebWidget()
-    
+
   # def outPhase1ButtonOnLoad(self):
   #   print("Mocking a call to the Logic service AL003.1")
   #   if self.outputFolderPrepared==False:
@@ -511,15 +511,31 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       meshes.append(mesh)
     return(meshes)
 
+  def saveTFM(m, filename):
+    # convert 4 x 4 transform matrix to tfm file
+    # compute the inverse of m
+    invm = np.linalg.inv(m)
+    # create a tfm file format
+    filename = filename + ".tfm"
+    file = open(filename,"w")
+    file.write("#Insight Transform File V1.0\n")
+    file.write("#Transform 0\n")
+    file.write("Transform: AffineTransform_double_3_3\n")
+    file.write("Parameters: ")
+    # print the 3 x 3 submatrix in the upper left corner
+    for i in range(0,3):
+        # print each column
+        file.write(str(m[0,i]) + " " + str(m[1,i]) + " " + str(m[2,i]) + " ")
+    # print the last column with the first two entries sign flipped
+    file.write(str(-1 * m[0,3]) + " " + str(-1 * m[1,3]) + " " + str(m[1,3]) + "\n")
+    # print a last line
+    file.write("FixedParameters: 0 0 0")
+    file.close()
+
   def saveNumpyArrayToCsv(array,filename):
-    #print(array)
-    #print(filename)
     np.savetxt(filename+".csv",array,delimiter = ",",fmt = "%s")
-    #print(str(array) + " saved to file " + str(filename))
   
   def saveNumpyArrayToFcsv(array,filename):
-      #print(array)
-      #print(filename)
       l = np.shape(array)[0]
       fname2 = filename + ".fcsv"
       file = open(fname2,"w")
@@ -529,8 +545,6 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
           file.write("p" + str(i) + ",")
           file.write(str(array[i,0]) + "," + str(array[i,1]) + "," + str(array[i,2]) + ",1,1 \n")
       file.close()
-      #print("file " + str(filename) + ".fcsv saved \n" )
-
 
   def alignOriginalMeshes(Auto3dgmData, phase = 2):
     import auto3dgm_nazar
@@ -565,13 +579,12 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       MeshExport.writeToFile(outputFolder, mesh, format='ply')
     print("Aligned meshes saved. \n" )
 
-
   def exportData(Auto3dgmData, outputFolder, phases=[1, 2]):
     acceptable_phases = [1, 2]
     for p in phases:
       if p not in acceptable_phases:
         raise ValueError('Unacceptable phase number passed to Auto3dgmLogic.exportData')
-        
+      
       exportFolder = os.path.join(outputFolder, 'phase' + str(p))
       subDirs = ['aligned_meshes', 'aligned_landmarks', 'rotation', 'scale_info']
 
@@ -616,9 +629,37 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
 
     for idx, mesh in enumerate(m):
       rot = r[idx]
+      # pad rot into 4 x 4 transform matrix in slicer
+      rot = np.vstack((rot.T, [0, 0, 0]))  # add a 4-th column for center info
+      rot = np.vstack((rot.T, [0, 0, 0, 1])) # add a 4-row
       Auto3dgmLogic.saveNumpyArrayToCsv(rot, os.path.join(exportFolder, mesh.name))
+      Auto3dgmLogic.saveTransform(rot, os.path.join(exportFolder, mesh.name))
 
   def exportScaleInfo(Auto3dgmData, exportFolder):
+    mmesh = Auto3dgmData.datasetCollection.datasets[0]
+    for idx, mesh in enumerate(mmesh):
+        filename = os.path.join(exportFolder, mesh.name)
+        m = mesh.initial_scale * np.diag([1, 1, 1])
+        c = mesh.initial_centroid
+        m = np.vstack((m.T, [-1*c[0], -1*c[1], c[2]]))
+        m = np.vstack((m.T, [0, 0, 0, 1]))
+        Auto3dgmLogic.saveNumpyArrayToCsv(m, filename)
+        Auto3dgmLogic.saveTransform(m, filename)
+
+  def saveTransform(m, filename):
+    matrix_vtk = vtk.vtkMatrix4x4()
+    for i in range(4):
+      for j in range(4):
+        matrix_vtk.SetElement(i,j,m[i][j])
+    transform = vtk.vtkTransform()
+    transform.SetMatrix(matrix_vtk)
+    transformNode =  slicer.mrmlScene.AddNewNodeByClass('vtkMRMLTransformNode', 'LT')
+    transformNode.SetAndObserveTransformToParent(transform)
+    filename = filename + '.h5'
+    slicer.util.saveNode(transformNode,filename)
+    slicer.mrmlScene.RemoveNode(transformNode)
+
+  def exportScaleInfoOld(Auto3dgmData, exportFolder):
     n = Auto3dgmData.phase1SampledPoints
     m = Auto3dgmData.phase2SampledPoints
 
@@ -631,23 +672,16 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       lmk2 = mlmk2[idx]
       filename = os.path.join(exportFolder, mesh.name) + ".csv"
       file = open(filename,"w")
-      # print slicer transform type 4 by 4 matrix
-      # upper left 3 by 3 matrix is rotation/scale
-      # rightmost column is translation
-      file.write(str(mesh.initial_scale) + ",0,0," + "-" + str(mesh.initial_centroid[0]) + " \n")
-      file.write("0," + str(mesh.initial_scale) + ",0," + "-" + str(mesh.initial_centroid[1]) + " \n")
-      file.write("0,0," + str(mesh.initial_scale) + str(mesh.initial_centroid[2]) + " \n")
-      file.write("0, 0, 0, 1")
       # use below to obtain raw center and scale info
-      #file.write("# center and scale information. \n")
-      #file.write("# original center and scale. \n")
-      #file.write("# first landmarks center and scale. \n")
-      #file.write("# second landmarks center and scale. \n")
-      #file.write(str(mesh.initial_centroid[0]) + "," + str(mesh.initial_centroid[1]) + "," + str(mesh.initial_centroid[2]) + "," + str(mesh.initial_scale) + " \n")
-      #file.write(str(lmk1.initial_centroid[0]) + "," + str(lmk1.initial_centroid[1]) + "," + str(lmk1.initial_centroid[2]) + "," + str(lmk1.initial_scale) + " \n")
-      #file.write(str(lmk2.initial_centroid[0]) + "," + str(lmk2.initial_centroid[1]) + "," + str(lmk2.initial_centroid[2]) + "," + str(lmk2.initial_scale) + " \n")
+      file.write("# center and scale information. \n")
+      file.write("# original center and scale. \n")
+      file.write("# first landmarks center and scale. \n")
+      file.write("# second landmarks center and scale. \n")
+      file.write(str(mesh.initial_centroid[0]) + "," + str(mesh.initial_centroid[1]) + "," + str(mesh.initial_centroid[2]) + "," + str(mesh.initial_scale) + " \n")
+      file.write(str(lmk1.initial_centroid[0]) + "," + str(lmk1.initial_centroid[1]) + "," + str(lmk1.initial_centroid[2]) + "," + str(lmk1.initial_scale) + " \n")
+      file.write(str(lmk2.initial_centroid[0]) + "," + str(lmk2.initial_centroid[1]) + "," + str(lmk2.initial_centroid[2]) + "," + str(lmk2.initial_scale) + " \n")
       file.close()
-      
+  
   def prepareDirs(exportFolder, subDirs=[]):
     if not os.path.exists(exportFolder):
       os.makedirs(exportFolder)
@@ -709,3 +743,5 @@ class Auto3dgmTest(ScriptedLoadableModuleTest):
 
   def test_Auto3dgm1(self):
     pass
+
+
