@@ -614,7 +614,8 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     landmarks = Auto3dgmLogic.landmarksFromPseudoLandmarks(m, p, r)
 
     for l in landmarks:
-      Auto3dgmLogic.saveNumpyArrayToFcsv(l.vertices, os.path.join(exportFolder, l.name))
+      #Auto3dgmLogic.saveNumpyArrayToFcsv(l.vertices, os.path.join(exportFolder, l.name))
+      Auto3dgmLogic.saveLandmarks(l.vertices, os.path.join(exportFolder, l.name))
 
   def exportRotations(Auto3dgmData, exportFolder, phase = 2):
     if phase == 1:
@@ -645,6 +646,20 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
         m = np.vstack((m.T, [0, 0, 0, 1]))
         Auto3dgmLogic.saveNumpyArrayToCsv(m, filename)
         Auto3dgmLogic.saveTransform(m, filename)
+
+  def saveLandmarks(m, filename):
+    fiducialNode = slicer.vtkMRMLMarkupsFiducialNode() # Create a markups node for imported points
+    l = np.shape(m)[0]
+    for landmark in range(l):
+        coordinates = [float(m[landmark,0]), float(m[landmark,1]), float(m[landmark,2])]
+        fiducialNode.AddFiducialFromArray(coordinates, str(landmark)) #insert fiducial named by landmark number
+    slicer.mrmlScene.AddNode(fiducialNode)
+    fiducialNode.SetName('LM') # set name to subject name, removing new line char
+    path = filename + '.fcsv'
+    slicer.util.saveNode(fiducialNode, path)
+    slicer.mrmlScene.RemoveNode(fiducialNode)  #remove node from scene
+    #fiducialNode.RemoveAllControlPoints() # remove all landmarks from node (new markups version)
+    fiducialNode.RemoveAllMarkups()  # remove all landmarks from node
 
   def saveTransform(m, filename):
     matrix_vtk = vtk.vtkMatrix4x4()
