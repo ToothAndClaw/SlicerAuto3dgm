@@ -651,7 +651,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     fiducialNode = slicer.vtkMRMLMarkupsFiducialNode() # Create a markups node for imported points
     l = np.shape(m)[0]
     for landmark in range(l):
-        coordinates = [float(m[landmark,0]), float(m[landmark,1]), float(m[landmark,2])]
+        coordinates = [float(-1*m[landmark,0]), float(-1*m[landmark,1]), float(m[landmark,2])]
         fiducialNode.AddFiducialFromArray(coordinates, str(landmark)) #insert fiducial named by landmark number
     slicer.mrmlScene.AddNode(fiducialNode)
     fiducialNode.SetName('LM') # set name to subject name, removing new line char
