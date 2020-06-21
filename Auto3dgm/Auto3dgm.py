@@ -1,10 +1,12 @@
 import os
+from os.path import isfile, splitext, join
 import shutil
 import unittest
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 import pdb
+import math
 
 import numpy as np
 
@@ -120,7 +122,13 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     self.loadButton.enabled=False
     self.loadButton.connect('clicked(bool)', self.onLoad)
     self.LMText, volumeInLabel, self.LMbutton=self.textIn('Input Directory','..', '')
-
+    
+    self.checkMeshButton=qt.QPushButton("Check Mesh Quality")
+    self.checkMeshButton.toolTip = "Check NaN values in vertices."
+    self.checkMeshButton.enabled=False
+    self.checkMeshButton.connect('clicked(bool)', self.checkMeshOnLoad)
+    # self.singleStepGroupBoxLayout.addWidget(self.checkMeshButton)
+    
     self.meshOutputText, volumeOutLabel, self.outputFolderButton=self.textIn('Output folder','Choose output folder', '')
     self.outputFolderButton.connect('clicked(bool)', self.selectOutputFolder)
 
@@ -128,6 +136,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     inputfolderLayout.addRow(self.meshInputText)#,1,2)
     inputfolderLayout.addRow(self.inputFolderButton)#,1,3)
     inputfolderLayout.addRow(self.loadButton)
+    inputfolderLayout.addRow(self.checkMeshButton)
     inputfolderLayout.addRow(self.meshOutputText)
     inputfolderLayout.addRow(self.outputFolderButton)
     self.LMbutton.connect('clicked(bool)', self.selectMeshFolder)
@@ -190,9 +199,19 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     print(self.Auto3dgmData.datasetCollection)
     try:
       self.subStepButton.enabled = bool(self.meshFolder)
+      self.phase1StepButton.enabled = bool(self.meshFolder)
+      self.phase2StepButton.enabled = bool(self.meshFolder)
+      self.allStepsButton.enabled = bool(self.meshFolder)
+      self.checkMeshButton.enabled = bool(self.meshFolder)
     except AttributeError:
       self.subStepButton.enable = False
+      self.phase1StepButton.enabled = False
+      self.phase2StepButton.enabled = False
+      self.allStepsButton.enabled = False
+      self.checkMeshButton.enabled = False
 
+  def checkMeshOnLoad(self):
+    Auto3dgmLogic.checkMeshQuality(meshes=self.Auto3dgmData.datasetCollection.datasets[0])
 
   def prepareOutputFolder(self):
     if (not os.path.exists(self.outputFolder+"/lowres/")):
@@ -221,16 +240,19 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     self.phase1StepButton = qt.QPushButton("Phase 1")
     self.phase1StepButton.toolTip = "Run the first analysis phase, aligning meshes based on low resolution subsampled points."
     self.phase1StepButton.connect('clicked(bool)', self.phase1StepButtonOnLoad)
+    self.phase1StepButton.enabled=False
     self.singleStepGroupBoxLayout.addWidget(self.phase1StepButton)
 
     self.phase2StepButton = qt.QPushButton("Phase 2")
     self.phase2StepButton.toolTip = "Run the second analysis phase, aligning meshes based on high resolution subsampled points."
     self.phase2StepButton.connect('clicked(bool)', self.phase2StepButtonOnLoad)
+    self.phase2StepButton.enabled=False
     self.singleStepGroupBoxLayout.addWidget(self.phase2StepButton)
 
     self.allStepsButton = qt.QPushButton("Run all steps")
     self.allStepsButton.toolTip = "Run all possible analysis steps and phases."
     self.allStepsButton.connect('clicked(bool)', self.allStepsButtonOnLoad)
+    self.allStepsButton.enabled=False
     runTabLayout.addRow(self.allStepsButton)
 
     runTabLayout.setVerticalSpacing(15)
@@ -277,41 +299,41 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     # visualizationinputfolderLayout.addRow(self.visualizationinputFolderButton)#,1,3)
 
     # self.visualizationinputFolderButton.connect('clicked(bool)', self.visualizationSelectMeshFolder)
-
+    
     self.visMeshGroupBox = qt.QGroupBox("Visualize aligned meshes")
     self.visMeshGroupBoxLayout = qt.QVBoxLayout()
     self.visMeshGroupBoxLayout.setSpacing(5)
     self.visMeshGroupBox.setLayout(self.visMeshGroupBoxLayout)
     outTabLayout.addRow(self.visMeshGroupBox)
 
-    self.visStartServerButton = qt.QPushButton("Start mesh visualization server")
-    self.visStartServerButton.toolTip = "Start server for visualizing aligned meshes. Be sure to stop server before quitting Slicer."
-    self.visStartServerButton.connect('clicked(bool)', self.visStartServerButtonOnLoad)
-    self.visMeshGroupBoxLayout.addWidget(self.visStartServerButton)
+    # self.visStartServerButton = qt.QPushButton("Start mesh visualization server")
+    # self.visStartServerButton.toolTip = "Start server for visualizing aligned meshes. Be sure to stop server before quitting Slicer."
+    # self.visStartServerButton.connect('clicked(bool)', self.visStartServerButtonOnLoad)
+    # self.visMeshGroupBoxLayout.addWidget(self.visStartServerButton)
 
     self.visPhase1Button = qt.QPushButton("View Phase 1 alignment")
     self.visPhase1Button.toolTip = "Visualize aligned meshes with alignment based on low resolution subsampled points."
     self.visPhase1Button.connect('clicked(bool)', self.visPhase1ButtonOnLoad)
-    self.visPhase1Button.enabled = False
+    self.visPhase1Button.enabled = True
     self.visMeshGroupBoxLayout.addWidget(self.visPhase1Button)
 
     self.visPhase2Button = qt.QPushButton("View Phase 2 alignment")
     self.visPhase2Button.toolTip = "Visualize aligned meshes with alignment based on high resolution subsampled points."
     self.visPhase2Button.connect('clicked(bool)', self.visPhase2ButtonOnLoad)
-    self.visPhase2Button.enabled = False
+    self.visPhase2Button.enabled = True
     self.visMeshGroupBoxLayout.addWidget(self.visPhase2Button)
 
-    self.visGroupBox = qt.QGroupBox("Visualize results")
-    self.visGroupBoxLayout = qt.QVBoxLayout()
-    self.visGroupBoxLayout.setSpacing(5)
-    self.visGroupBox.setLayout(self.visGroupBoxLayout)
-    outTabLayout.addRow(self.visGroupBox)
+    # self.visGroupBox = qt.QGroupBox("Visualize results")
+    # self.visGroupBoxLayout = qt.QVBoxLayout()
+    # self.visGroupBoxLayout.setSpacing(5)
+    # self.visGroupBox.setLayout(self.visGroupBoxLayout)
+    # outTabLayout.addRow(self.visGroupBox)
 
-    self.visSubButton = qt.QPushButton("Subsample")
-    self.visSubButton.toolTip = "Visualize collections of subsampled points per mesh."
-    self.visSubButton.connect('clicked(bool)', self.visSubButtonOnLoad)
-    self.visSubButton.enabled = False
-    self.visGroupBoxLayout.addWidget(self.visSubButton)
+    # self.visSubButton = qt.QPushButton("Subsample")
+    # self.visSubButton.toolTip = "Visualize collections of subsampled points per mesh."
+    # self.visSubButton.connect('clicked(bool)', self.visSubButtonOnLoad)
+    # self.visSubButton.enabled = False
+    # self.visGroupBoxLayout.addWidget(self.visSubButton)
 
     # self.outGroupBox = qt.QGroupBox("Output results")
     # self.outGroupBoxLayout = qt.QVBoxLayout()
@@ -344,32 +366,39 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
   def visSubButtonOnLoad(self):
     print("Mocking a call to the Logic service AL003.3, maybe others")
 
-  def visStartServerButtonOnLoad(self):
-    viewerTmp = os.path.join(self.outputFolder, 'viewer_tmp')
-    if self.visStartServerButton.text == "Start mesh visualization server":
-      self.visPhase1Button.enabled = True
-      self.visPhase2Button.enabled = True
-      self.visStartServerButton.setText("Stop Mesh Visualization Server")
-      Auto3dgmLogic.prepareDirs(viewerTmp)
-      self.serverNode = Auto3dgmLogic.serveWebViewer(viewerTmp)
-    else:
-      self.visPhase1Button.enabled = False
-      self.visPhase2Button.enabled = False
-      self.visStartServerButton.setText("Start mesh visualization server")
-      if self.serverNode:
-        self.serverNode.Cancel()
-      Auto3dgmLogic.removeDir(viewerTmp)
+  #  def visStartServerButtonOnLoad(self):
+  #    viewerTmp = os.path.join(self.outputFolder, 'viewer_tmp')
+  #    if self.visStartServerButton.text == "Start mesh visualization server":
+  #      self.visPhase1Button.enabled = True
+  #      self.visPhase2Button.enabled = True
+  #      self.visStartServerButton.setText("Stop Mesh Visualization Server")
+  #      Auto3dgmLogic.prepareDirs(viewerTmp)
+  #      self.serverNode = Auto3dgmLogic.serveWebViewer(viewerTmp)
+  #    else:
+  #      self.visPhase1Button.enabled = False
+  #      self.visPhase2Button.enabled = False
+  #      self.visStartServerButton.setText("Start mesh visualization server")
+  #      if self.serverNode:
+  #        self.serverNode.Cancel()
+  #      Auto3dgmLogic.removeDir(viewerTmp)
 
   def visPhase1ButtonOnLoad(self):
-    viewerTmp = os.path.join(self.outputFolder, 'viewer_tmp')
-    Auto3dgmLogic.copyAlignedMeshes(viewerTmp, self.outputFolder, phase = 1)
-    self.webWidget = Auto3dgmLogic.createWebWidget()
+    #viewerTmp = os.path.join(self.outputFolder, 'viewer_tmp')
+    #Auto3dgmLogic.copyAlignedMeshes(viewerTmp, self.outputFolder, phase = 1)
+    #self.webWidget = Auto3dgmLogic.createWebWidget()
+    viewMeshFolder = os.path.join(self.outputFolder, 'phase1/aligned_meshes')
+    viewLmkFolder = os.path.join(self.outputFolder, 'phase1/aligned_landmarks')
+    Auto3dgmLogic.viewAlignedMeshWithinSlicer(viewMeshFolder, viewLmkFolder)
+  
 
   def visPhase2ButtonOnLoad(self):
-    viewerTmp = os.path.join(self.outputFolder, 'viewer_tmp')
-    Auto3dgmLogic.copyAlignedMeshes(viewerTmp, self.outputFolder, phase = 2)
-    self.webWidget = Auto3dgmLogic.createWebWidget()
-
+    #viewerTmp = os.path.join(self.outputFolder, 'viewer_tmp')
+    #Auto3dgmLogic.copyAlignedMeshes(viewerTmp, self.outputFolder, phase = 1)
+    #self.webWidget = Auto3dgmLogic.createWebWidget()
+    viewMeshFolder = os.path.join(self.outputFolder, 'phase2/aligned_meshes')
+    viewLmkFolder = os.path.join(self.outputFolder, 'phase2/aligned_landmarks')
+    Auto3dgmLogic.viewAlignedMeshWithinSlicer(viewMeshFolder, viewLmkFolder)
+  
   # def outPhase1ButtonOnLoad(self):
   #   print("Mocking a call to the Logic service AL003.1")
   #   if self.outputFolderPrepared==False:
@@ -462,9 +491,6 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
   # list of meshes
   def subsample(Auto3dgmData,list_of_pts, meshes):
     from auto3dgm_nazar.mesh.subsample import Subsample
-    print(list_of_pts)
-    for mesh in meshes:
-        print(len(mesh.vertices))
     ss = Subsample(pointNumber=list_of_pts, meshes=meshes, seed={},center_scale=True)
     for point in list_of_pts:
       names = []
@@ -476,11 +502,22 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       dataset[point] = meshes
       Auto3dgmData.datasetCollection.add_dataset(dataset,point)
     return(Auto3dgmData)
-
+ 
   def createDatasetCollection(dataset, name):
     import auto3dgm_nazar
     datasetCollection=auto3dgm_nazar.dataset.datasetcollection.DatasetCollection(datasets = [dataset],dataset_names = [name])
     return datasetCollection
+  
+  def checkMeshQuality(meshes):
+    badMesh = []
+    for mesh in meshes:
+      if np.isnan(np.sum(mesh.vertices)):
+        print(mesh.name)
+        badMesh.append(mesh.name)
+    if len(badMesh) > 0:
+      slicer.util.confirmOkCancelDisplay("Mesh quality check failed. Please clean the meshes listed in the python console.")
+    else:
+      slicer.util.confirmOkCancelDisplay("Mesh quality check passed. ")
 
   def correspondence(Auto3dgmData, mirror, phase = 1):
     from auto3dgm_nazar.analysis.correspondence import Correspondence
@@ -738,6 +775,70 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     webWidget.show()
     return webWidget
 
+  def viewAlignedMeshWithinSlicer(viewMeshFolder, viewLmkFolder):
+      slicer.mrmlScene.Clear(0)
+      modelDir = viewMeshFolder
+      modelFileExt = "ply"
+      numberOfColumns = 4
+      modelFiles = list(f for f in os.listdir(modelDir) if f.endswith('.' + modelFileExt))
+      
+      markupDir = viewLmkFolder
+      markupFileExt = "fcsv"
+      
+      # Create a custom layout
+      numberOfRows = int(math.ceil(len(modelFiles)/numberOfColumns))
+      customLayoutId= 3311  # we pick a random id that is not used by others
+      slicer.app.setRenderPaused(True)
+      customLayout = '<layout type="vertical">'
+      viewIndex = 0
+      for rowIndex in range(numberOfRows):
+        customLayout += '<item><layout type="horizontal">'
+        for colIndex in range(numberOfColumns):
+          name = os.path.basename(modelFiles[viewIndex]) if viewIndex < len(modelFiles) else "compare "+str(viewIndex)
+          customLayout += '<item><view class="vtkMRMLViewNode" singletontag="'+name
+          customLayout += '"><property name="viewlabel" action="default">'+name+'</property></view></item>'
+          viewIndex += 1
+        customLayout += '</layout></item>'
+
+      customLayout += '</layout>'
+      if not slicer.app.layoutManager().layoutLogic().GetLayoutNode().SetLayoutDescription(customLayoutId, customLayout):
+          slicer.app.layoutManager().layoutLogic().GetLayoutNode().AddLayoutDescription(customLayoutId, customLayout)
+
+      slicer.app.layoutManager().setLayout(customLayoutId)
+      
+      # Add a transform node
+      c = 2000
+      transformNode = slicer.vtkMRMLTransformNode()
+      slicer.mrmlScene.AddNode(transformNode)
+      transformMatrixNP = np.array(
+      [[c, 0, 0, 0],
+       [0, c, 0, 0],
+       [0, 0, c, 0],
+       [0, 0, 0, 1]])
+      transformNode.SetAndObserveMatrixTransformToParent(slicer.util.vtkMatrixFromArray(transformMatrixNP))
+      
+      # Load and show each model in a view
+      for modelIndex, modelFile in enumerate(modelFiles):
+        # set a viewNode
+        name = os.path.basename(modelFile)
+        viewNode = slicer.mrmlScene.GetSingletonNode(name, "vtkMRMLViewNode")
+        viewNode.LinkedControlOn()
+        # set a modelNode
+        modelNode = slicer.util.loadModel(modelDir+"/"+modelFile)
+        modelNode.SetAndObserveTransformNodeID(transformNode.GetID())
+        modelNode.GetDisplayNode().AddViewNodeID(viewNode.GetID())
+        # Show only one set of landmark in each view
+        markupFile = os.path.splitext(modelFile)[0] + '.' + markupFileExt
+        markupNode =  slicer.util.loadMarkupsFiducialList(markupDir+"/"+markupFile)[1]
+        markupNode.SetAndObserveTransformNodeID(transformNode.GetID())
+        mDisplayNode = markupNode.GetDisplayNode()
+        mDisplayNode.SetTextScale(0)
+        mDisplayNode.SetGlyphScale(4)
+        mDisplayNode.AddViewNodeID(viewNode.GetID())
+
+      slicer.app.setRenderPaused(False)
+
+
 class Auto3dgmTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
@@ -758,5 +859,6 @@ class Auto3dgmTest(ScriptedLoadableModuleTest):
 
   def test_Auto3dgm1(self):
     pass
+
 
 
