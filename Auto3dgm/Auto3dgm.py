@@ -539,11 +539,26 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       perm = permutations[i]
       rot = rotations[i]
       V = mesh.vertices
-      print(mesh.initial_scale)
       scaledV = mesh.initial_vertices
       lmtranspose = scaledV.T @ perm
       #landmarks = scaledV
       landmarks = np.transpose(np.matmul(rot,lmtranspose))
+      mesh = auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices=landmarks,name=mesh.name, center_scale=False, deep=True)
+      meshes.append(mesh)
+    return(meshes)
+
+  def landmarksOSSFromPseudoLandmarks(subsampledMeshes,permutations):
+    import auto3dgm_nazar
+    from auto3dgm_nazar.mesh.meshfactory import MeshFactory
+    meshes = []
+    for i in range(len(subsampledMeshes)):
+      mesh = subsampledMeshes[i]
+      perm = permutations[i]
+      V = mesh.vertices
+      scaledV = mesh.initial_vertices
+      lmtranspose = scaledV.T @ perm
+      #landmarks = scaledV
+      landmarks = np.transpose(lmtranspose)
       mesh = auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices=landmarks,name=mesh.name, center_scale=False, deep=True)
       meshes.append(mesh)
     return(meshes)
@@ -623,7 +638,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
         raise ValueError('Unacceptable phase number passed to Auto3dgmLogic.exportData')
       
       exportFolder = os.path.join(outputFolder, 'phase' + str(p))
-      subDirs = ['aligned_meshes', 'aligned_landmarks', 'rotation', 'scale_info']
+      subDirs = ['aligned_meshes', 'aligned_landmarks', 'rotation', 'scale_info', 'landmarks_OSS']
 
       Auto3dgmLogic.prepareDirs(exportFolder, subDirs)
       Auto3dgmLogic.alignOriginalMeshes(Auto3dgmData, p)
@@ -631,6 +646,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       Auto3dgmLogic.exportAlignedLandmarks(Auto3dgmData, os.path.join(exportFolder, subDirs[1]), p)
       Auto3dgmLogic.exportRotations(Auto3dgmData, os.path.join(exportFolder, subDirs[2]), p)
       Auto3dgmLogic.exportScaleInfo(Auto3dgmData, os.path.join(exportFolder, subDirs[3]))
+      Auto3dgmLogic.exportLandmarksOSS(Auto3dgmData, os.path.join(exportFolder, subDirs[4]), p)
     print("All computation done. \n" )
 
   def exportAlignedLandmarks(Auto3dgmData, exportFolder, phase = 2):
@@ -653,6 +669,38 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     for l in landmarks:
       #Auto3dgmLogic.saveNumpyArrayToFcsv(l.vertices, os.path.join(exportFolder, l.name))
       Auto3dgmLogic.saveLandmarks(l.vertices, os.path.join(exportFolder, l.name))
+
+  def exportLandmarksOSS(Auto3dgmData, exportFolder, phase = 2):
+    from auto3dgm_nazar.mesh.meshexport import MeshExport
+    from auto3dgm_nazar.mesh.meshfactory import MeshFactory
+    if phase == 1:
+      n = Auto3dgmData.phase1SampledPoints
+      label = "Phase 1"
+    elif phase == 2:
+      n = Auto3dgmData.phase2SampledPoints
+      label = "Phase 2"
+    else:
+      raise ValueError('Unaccepted phase number passed to Auto3dgmLogic.exportAlignedLandmarks')
+    
+    m = Auto3dgmData.datasetCollection.datasets[n][n]
+    p = Auto3dgmData.datasetCollection.analysis_sets[label].globalized_alignment['p']
+    landmarks = Auto3dgmLogic.landmarksOSSFromPseudoLandmarks(m, p)
+
+    mmesh = Auto3dgmData.datasetCollection.datasets[0]
+    scaleDict = {}
+    centerDict = {}
+    for idx, mesh in enumerate(mmesh):
+      m = mesh.initial_scale
+      c = mesh.initial_centroid
+      # m = np.vstack((m.T, [-1*c[0], -1*c[1], c[2]]))
+      scaleDict[mesh.name] = m
+      centerDict[mesh.name] = c
+
+    for l in landmarks:
+      m = scaleDict[l.name]
+      c = centerDict[l.name]
+      lmkOSS = m * l.vertices + c
+      Auto3dgmLogic.saveLandmarks(lmkOSS, os.path.join(exportFolder, l.name))
 
   def exportRotations(Auto3dgmData, exportFolder, phase = 2):
     if phase == 1:
