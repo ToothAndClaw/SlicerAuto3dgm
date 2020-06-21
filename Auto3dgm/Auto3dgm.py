@@ -705,17 +705,25 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
   def exportRotations(Auto3dgmData, exportFolder, phase = 2):
     if phase == 1:
       label = "Phase 1"
+      n = Auto3dgmData.phase1SampledPoints
     elif phase == 2:
       label = "Phase 2"
+      n = Auto3dgmData.phase2SampledPoints
     else:
       raise ValueError('Unaccepted phase number passed to Auto3dgmLogic.')
     
-    m = Auto3dgmData.datasetCollection.datasets[0]
+    m = Auto3dgmData.datasetCollection.datasets[n][n]
     r = Auto3dgmData.datasetCollection.analysis_sets[label].globalized_alignment['r']
 
-    for idx, mesh in enumerate(m):
+    for idx in range(len(m)):
+      mesh = m[idx]
       rot = r[idx]
+      # rot = np.linalg.inv(rot)
       # pad rot into 4 x 4 transform matrix in slicer
+      rot[2][0] = -1 * rot[2][0]
+      rot[2][1] = -1 * rot[2][1]
+      rot[0][2] = -1 * rot[0][2]
+      rot[1][2] = -1 * rot[1][2]
       rot = np.vstack((rot.T, [0, 0, 0]))  # add a 4-th column for center info
       rot = np.vstack((rot.T, [0, 0, 0, 1])) # add a 4-row
       Auto3dgmLogic.saveNumpyArrayToCsv(rot, os.path.join(exportFolder, mesh.name))
@@ -725,9 +733,9 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     mmesh = Auto3dgmData.datasetCollection.datasets[0]
     for idx, mesh in enumerate(mmesh):
         filename = os.path.join(exportFolder, mesh.name)
-        m = mesh.initial_scale * np.diag([1, 1, 1])
-        c = mesh.initial_centroid
-        m = np.vstack((m.T, [-1*c[0], -1*c[1], c[2]]))
+        m = (1/mesh.initial_scale) * np.diag([1, 1, 1])
+        c = (1/mesh.initial_scale) * mesh.initial_centroid
+        m = np.vstack((m.T, [1*c[0], 1*c[1], -c[2]]))
         m = np.vstack((m.T, [0, 0, 0, 1]))
         Auto3dgmLogic.saveNumpyArrayToCsv(m, filename)
         Auto3dgmLogic.saveTransform(m, filename)
