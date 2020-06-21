@@ -299,7 +299,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     # visualizationinputfolderLayout.addRow(self.visualizationinputFolderButton)#,1,3)
 
     # self.visualizationinputFolderButton.connect('clicked(bool)', self.visualizationSelectMeshFolder)
-    
+
     self.visMeshGroupBox = qt.QGroupBox("Visualize aligned meshes")
     self.visMeshGroupBoxLayout = qt.QVBoxLayout()
     self.visMeshGroupBoxLayout.setSpacing(5)
@@ -323,45 +323,46 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     self.visPhase2Button.enabled = True
     self.visMeshGroupBoxLayout.addWidget(self.visPhase2Button)
 
-    # self.visGroupBox = qt.QGroupBox("Visualize results")
-    # self.visGroupBoxLayout = qt.QVBoxLayout()
-    # self.visGroupBoxLayout.setSpacing(5)
-    # self.visGroupBox.setLayout(self.visGroupBoxLayout)
-    # outTabLayout.addRow(self.visGroupBox)
+    visFrame = ctk.ctkCollapsibleButton()
+    visFrame.text="Landmark Options"
+    visFrameLayout= qt.QGridLayout(visFrame)
+    outTabLayout.addWidget(visFrame)
+    
+    self.scaleLMKSlider = ctk.ctkSliderWidget()
+    self.scaleLMKSlider.singleStep = .1
+    self.scaleLMKSlider.minimum = 0
+    self.scaleLMKSlider.maximum = 10
+    self.scaleLMKSlider.value = 3
+    self.scaleLMKSlider.setToolTip("Set scale for landmark glyphs")
+    scaleLMKSliderLabel=qt.QLabel("Glyph scale")
+    visFrameLayout.addWidget(scaleLMKSliderLabel,4,1)
+    visFrameLayout.addWidget(self.scaleLMKSlider,4,2)
+    self.scaleLMKSlider.connect('valueChanged(double)', self.scaleLMKGlyph)
 
-    # self.visSubButton = qt.QPushButton("Subsample")
-    # self.visSubButton.toolTip = "Visualize collections of subsampled points per mesh."
-    # self.visSubButton.connect('clicked(bool)', self.visSubButtonOnLoad)
-    # self.visSubButton.enabled = False
-    # self.visGroupBoxLayout.addWidget(self.visSubButton)
-
-    # self.outGroupBox = qt.QGroupBox("Output results")
-    # self.outGroupBoxLayout = qt.QVBoxLayout()
-    # self.outGroupBoxLayout.setSpacing(5)
-    # self.outGroupBox.setLayout(self.outGroupBoxLayout)
-    # outTabLayout.addRow(self.outGroupBox)
-
-    # self.outPhase1Button = qt.QPushButton("Phase 1 results to GPA")
-    # self.outPhase1Button.toolTip = "Output aligned mesh results (based on low resolution subsampled points) to GPA toolkit extension for PCA and other analysis."
-    # self.outPhase1Button.connect('clicked(bool)', self.outPhase1ButtonOnLoad)
-    # self.outGroupBoxLayout.addWidget(self.outPhase1Button)
-
-    # self.outPhase2Button = qt.QPushButton("Phase 2 results to GPA")
-    # self.outPhase2Button.toolTip = "Output aligned mesh results (based on high resolution subsampled points)to GPA toolkit extension for PCA and other analysis."
-    # self.outPhase2Button.connect('clicked(bool)', self.outPhase2ButtonOnLoad)
-    # self.outGroupBoxLayout.addWidget(self.outPhase2Button)
-
-    # self.outVisButton = qt.QPushButton("Visualization(s)")
-    # self.outVisButton.toolTip = "Output all visualizations produced."
-    # self.outVisButton.connect('clicked(bool)', self.outVisButtonOnLoad)
-    # self.outGroupBoxLayout.addWidget(self.outVisButton)
-
-    # self.importAlignedButton = qt.QPushButton("Export aligned meshes")
-    # self.importAlignedButton.toolTip = "Export aligned meshes to be plugged to the webviewer"
-    # self.importAlignedButton.connect('clicked(bool)', self.onImportAligned)
-    # self.outGroupBoxLayout.addWidget(self.importAlignedButton)
-
+    self.scaleLMKSliderText = ctk.ctkSliderWidget()
+    self.scaleLMKSliderText.singleStep = .1
+    self.scaleLMKSliderText.minimum = 0
+    self.scaleLMKSliderText.maximum = 10
+    self.scaleLMKSliderText.value = 0
+    self.scaleLMKSliderText.setToolTip("Set scale for landmark label")
+    scaleLMKSliderLabelText=qt.QLabel("Label scale")
+    visFrameLayout.addWidget(scaleLMKSliderLabelText,5,1)
+    visFrameLayout.addWidget(self.scaleLMKSliderText,5,2)
+    self.scaleLMKSliderText.connect('valueChanged(double)', self.scaleLMKText)
+    
     outTabLayout.setVerticalSpacing(15)
+  
+  def scaleLMKGlyph(self):
+      LMKNodeNum = slicer.mrmlScene.GetNumberOfNodesByClass("vtkMRMLMarkupsFiducialDisplayNode")
+      for i in range(LMKNodeNum):
+        LMKNode = slicer.mrmlScene.GetNthNodeByClass(i, "vtkMRMLMarkupsFiducialDisplayNode")
+        LMKNode.SetGlyphScale(self.scaleLMKSlider.value)
+
+  def scaleLMKText(self):
+      LMKNodeNum = slicer.mrmlScene.GetNumberOfNodesByClass("vtkMRMLMarkupsFiducialDisplayNode")
+      for i in range(LMKNodeNum):
+        LMKNode = slicer.mrmlScene.GetNthNodeByClass(i, "vtkMRMLMarkupsFiducialDisplayNode")
+        LMKNode.SetTextScale(self.scaleLMKSliderText.value)
 
   def visSubButtonOnLoad(self):
     print("Mocking a call to the Logic service AL003.3, maybe others")
