@@ -834,7 +834,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       markupFileExt = "fcsv"
       
       # Create a custom layout
-      numberOfRows = int(math.ceil(len(modelFiles)/numberOfColumns))
+      numberOfRows = min(int(math.ceil(len(modelFiles)/numberOfColumns)), 4)
       customLayoutId= 3311  # we pick a random id that is not used by others
       slicer.app.setRenderPaused(True)
       customLayout = '<layout type="vertical">'
@@ -867,22 +867,23 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       
       # Load and show each model in a view
       for modelIndex, modelFile in enumerate(modelFiles):
-        # set a viewNode
-        name = os.path.basename(modelFile)
-        viewNode = slicer.mrmlScene.GetSingletonNode(name, "vtkMRMLViewNode")
-        viewNode.LinkedControlOn()
-        # set a modelNode
-        modelNode = slicer.util.loadModel(modelDir+"/"+modelFile)
-        modelNode.SetAndObserveTransformNodeID(transformNode.GetID())
-        modelNode.GetDisplayNode().AddViewNodeID(viewNode.GetID())
-        # Show only one set of landmark in each view
-        markupFile = os.path.splitext(modelFile)[0] + '.' + markupFileExt
-        markupNode =  slicer.util.loadMarkupsFiducialList(markupDir+"/"+markupFile)[1]
-        markupNode.SetAndObserveTransformNodeID(transformNode.GetID())
-        mDisplayNode = markupNode.GetDisplayNode()
-        mDisplayNode.SetTextScale(0)
-        mDisplayNode.SetGlyphScale(4)
-        mDisplayNode.AddViewNodeID(viewNode.GetID())
+        if modelIndex < numberOfColumns * numberOfRows:
+          # set a viewNode
+          name = os.path.basename(modelFile)
+          viewNode = slicer.mrmlScene.GetSingletonNode(name, "vtkMRMLViewNode")
+          viewNode.LinkedControlOn()
+          # set a modelNode
+          modelNode = slicer.util.loadModel(modelDir+"/"+modelFile)
+          modelNode.SetAndObserveTransformNodeID(transformNode.GetID())
+          modelNode.GetDisplayNode().AddViewNodeID(viewNode.GetID())
+          # Show only one set of landmark in each view
+          markupFile = os.path.splitext(modelFile)[0] + '.' + markupFileExt
+          markupNode =  slicer.util.loadMarkupsFiducialList(markupDir+"/"+markupFile)[1]
+          markupNode.SetAndObserveTransformNodeID(transformNode.GetID())
+          mDisplayNode = markupNode.GetDisplayNode()
+          mDisplayNode.SetTextScale(0)
+          mDisplayNode.SetGlyphScale(4)
+          mDisplayNode.AddViewNodeID(viewNode.GetID())
 
       slicer.app.setRenderPaused(False)
 
