@@ -639,7 +639,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
         raise ValueError('Unacceptable phase number passed to Auto3dgmLogic.exportData')
       
       exportFolder = os.path.join(outputFolder, 'phase' + str(p))
-      subDirs = ['aligned_meshes', 'aligned_landmarks', 'rotation', 'scale_info', 'landmarks_OSS']
+      subDirs = ['aligned_meshes', 'aligned_landmarks', 'rotation', 'scale_info', 'landmarks_OSS', 'original_meshes']
 
       Auto3dgmLogic.prepareDirs(exportFolder, subDirs)
       Auto3dgmLogic.alignOriginalMeshes(Auto3dgmData, p)
@@ -648,6 +648,7 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
       Auto3dgmLogic.exportRotations(Auto3dgmData, os.path.join(exportFolder, subDirs[2]), p)
       Auto3dgmLogic.exportScaleInfo(Auto3dgmData, os.path.join(exportFolder, subDirs[3]))
       Auto3dgmLogic.exportLandmarksOSS(Auto3dgmData, os.path.join(exportFolder, subDirs[4]), p)
+      Auto3dgmLogic.exportOriginalMeshes(Auto3dgmData, os.path.join(exportFolder, subDirs[5]))
     print("All computation done. \n" )
 
   def exportAlignedLandmarks(Auto3dgmData, exportFolder, phase = 2):
@@ -767,6 +768,15 @@ class Auto3dgmLogic(ScriptedLoadableModuleLogic):
     filename = filename + '.h5'
     slicer.util.saveNode(transformNode,filename)
     slicer.mrmlScene.RemoveNode(transformNode)
+
+  def exportOriginalMeshes(Auto3dgmData, outputFolder):
+    import auto3dgm_nazar
+    from auto3dgm_nazar.mesh.meshexport import MeshExport
+    if not os.path.exists(outputFolder):
+      os.makedirs(outputFolder)
+    for mesh in Auto3dgmData.datasetCollection.datasets[0]:
+      mesh_orig = auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices=mesh.initial_vertices,faces=mesh.faces, name=mesh.name, center_scale=False, deep=True)
+      MeshExport.writeToFile(outputFolder, mesh_orig, format='ply')
 
   def exportScaleInfoOld(Auto3dgmData, exportFolder):
     n = Auto3dgmData.phase1SampledPoints
