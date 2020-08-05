@@ -72,7 +72,7 @@ class Auto3dgmWidget(ScriptedLoadableModuleWidget):
     try:
       import mosek
     except ModuleNotFoundError as e:
-      if slicer.util.confirmOkCancelDisplay("Auto3dgm requires 'mosek' python package. Click OK to download it now. It may take a few minues."):
+      if slicer.util.confirmOkCancelDisplay("Auto3dgm requires 'mosek' python package. Click OK to download it now. It may take a few minues. Please also download an academic mosek license from https://www.mosek.com/products/academic-licenses/ and save the license file in the lib folder. More details about installing a mosek license can be found on https://toothandclaw.github.io/installations/"):
         slicer.util.pip_install('mosek')
         import mosek
   
